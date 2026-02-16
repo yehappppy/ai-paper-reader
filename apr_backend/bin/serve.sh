@@ -63,12 +63,12 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-LOG_FILE="server.log"
+LOG_FILE="../log/backend.log"
 
 echo "Starting AI Paper Reader backend on $HOST:$PORT"
-echo "Log file: $LOG_FILE"
-nohup uvicorn src.main:app --host "$HOST" --port "$PORT" $RELOAD > "$LOG_FILE" 2>&1 &
+echo "Log file: $BACKEND_ROOT/../log/backend.log"
+nohup uvicorn src.main:app --host "$HOST" --port "$PORT" $RELOAD > "$BACKEND_ROOT/../log/backend.log" 2>&1 &
 
 echo "Server started with PID: $!"
-echo "To view logs: tail -f $LOG_FILE"
+echo "To view logs: tail -f $BACKEND_ROOT/../log/backend.log"
 echo "To stop: ./bin/shutdown.sh"

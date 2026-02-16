@@ -1,0 +1,7 @@
+# AI Paper Reader - Project Configuration
+
+server:
+  backend:
+    port: 8000
+  frontend:
+    port: 3000
