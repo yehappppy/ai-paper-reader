@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Sparkles, Search, Upload, Moon, Sun, LayoutDashboard } from "lucide-react";
+import { Sparkles, Upload, Moon, Sun, LayoutDashboard } from "lucide-react";
 import { useUIStore, usePapersStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -14,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -57,8 +56,8 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 glass-subtle">
-      <div className="flex h-14 items-center px-4 lg:px-6">
-        {/* Logo & Title */}
+      <div className="flex h-14 items-center justify-between px-4 lg:px-6">
+        {/* Left - Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-md group-hover:shadow-lg transition-shadow">
             <Sparkles className="w-4 h-4 text-white" />
@@ -66,22 +65,7 @@ export function Navbar() {
           <span className="text-base font-semibold tracking-tight">AI Paper Reader</span>
         </Link>
 
-        {/* Search - Center */}
-        <div className="flex-1 flex justify-center px-8">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search papers..."
-              className="w-full h-9 pl-9 pr-4 rounded-full bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-              <span className="text-xs">⌘</span>K
-            </kbd>
-          </div>
-        </div>
-
-        {/* Right Actions */}
+        {/* Right - All Actions */}
         <div className="flex items-center gap-2">
           {/* Dashboard Link */}
           <Link href="/dashboard">
