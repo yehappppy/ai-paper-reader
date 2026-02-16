@@ -1,0 +1,47 @@
+# Application Configuration
+
+app:
+  name: "AI Paper Reader"
+  version: "0.1.0"
+  debug: true
+
+# Storage paths
+# Each paper is a folder under workspace_root, containing any PDF file and optionally a note file
+storage:
+  workspace_root: "./workspaces"     # Root directory containing paper folders
+
+# LLM Configuration
+llm:
+  provider: "minimax"  # Options: openai, grok, minimax, anthropic, etc.
+  model: "MiniMax-Text-01"
+  temperature: 0.7
+  max_tokens: 2000
+
+  # OpenAI settings
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "https://api.openai.com/v1"
+
+  # Grok settings (example for alternative LLM)
+  grok:
+    api_key: "${GROK_API_KEY}"
+    base_url: "https://api.x.ai/v1"
+
+  # Minimax settings
+  minimax:
+    api_key: "${MINIMAX_API_KEY}"
+    base_url: "https://api.minimax.io/v1"
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+
+# PDF Processing
+pdf:
+  max_file_size_mb: 50
+  extract_images: true
+  ocr_enabled: false
