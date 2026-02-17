@@ -218,15 +218,7 @@ export function DashboardContent({ initialPapers, error }: DashboardContentProps
 
       {/* Papers Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredPapers.map((paper, index) => (
-          <PaperCard
-            key={paper.id}
-            paper={paper}
-            index={index}
-          />
-        ))}
-
-        {/* Upload Card */}
+        {/* Upload Card - First position */}
         <label className="cursor-pointer">
           <Card className="aspect-[3/4] flex flex-col items-center justify-center gap-3 border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30 transition-all duration-300 group">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -244,6 +236,15 @@ export function DashboardContent({ initialPapers, error }: DashboardContentProps
             />
           </Card>
         </label>
+
+        {/* Paper Cards */}
+        {filteredPapers.map((paper, index) => (
+          <PaperCard
+            key={paper.id}
+            paper={paper}
+            index={index}
+          />
+        ))}
       </div>
     </motion.div>
   );
