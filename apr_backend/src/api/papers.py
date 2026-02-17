@@ -16,6 +16,46 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def generate_thumbnail(paper_dir: Path, content: bytes) -> str | None:
+    """Generate a thumbnail from the first page of the PDF."""
+    try:
+        import fitz
+        from PIL import Image
+        import io
+
+        # Open PDF from bytes
+        doc = fitz.open(stream=content, filetype="pdf")
+        if len(doc) == 0:
+            doc.close()
+            return None
+
+        # Get first page
+        page = doc[0]
+        # Render at higher resolution for better quality
+        zoom = 2.0
+        mat = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=mat)
+        doc.close()
+
+        # Convert to PIL Image
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+        # Resize to thumbnail size (300px width, maintain aspect ratio)
+        thumbnail_width = 300
+        aspect_ratio = img.height / img.width
+        thumbnail_height = int(thumbnail_width * aspect_ratio)
+        img = img.resize((thumbnail_width, thumbnail_height), Image.Resampling.LANCZOS)
+
+        # Save thumbnail
+        thumbnail_path = paper_dir / "thumbnail.jpg"
+        img.save(thumbnail_path, "JPEG", quality=85, optimize=True)
+
+        return f"/api/papers/{paper_dir.name}/thumbnail.jpg"
+    except Exception as e:
+        logger.warning(f"Failed to generate thumbnail: {e}")
+        return None
+
+
 class PaperMetadata(BaseModel):
     """Paper metadata model."""
 
@@ -25,6 +65,8 @@ class PaperMetadata(BaseModel):
     author: str | None = None
     page_count: int = 0
     file_size: int = 0
+    thumbnail_url: str | None = None
+    upload_date: str | None = None
 
 
 class PaperResponse(BaseModel):
@@ -86,17 +128,26 @@ async def upload_paper(file: UploadFile = File(...)) -> PaperResponse:
     paper_path = settings.storage.get_paper_path(safe_name)
     paper_path.write_bytes(content)
 
-    # Extract basic metadata using PyMuPDF
+    # Extract basic metadata and generate thumbnail using PyMuPDF
+    thumbnail_url = None
     try:
         import fitz  # PyMuPDF
 
         doc = fitz.open(stream=content, filetype="pdf")
         page_count = len(doc)
         metadata = doc.metadata
+
+        # Generate thumbnail
+        thumbnail_url = generate_thumbnail(paper_dir, content)
+
         doc.close()
     except Exception:
         page_count = 0
         metadata = {}
+
+    # Use current time as upload date for new uploads
+    from datetime import datetime, timezone
+    upload_date = datetime.now(timezone.utc).isoformat()
 
     paper = PaperMetadata(
         id=safe_name,
@@ -105,6 +156,8 @@ async def upload_paper(file: UploadFile = File(...)) -> PaperResponse:
         author=metadata.get("author"),
         page_count=page_count,
         file_size=len(content),
+        thumbnail_url=thumbnail_url,
+        upload_date=upload_date,
     )
 
     return PaperResponse(success=True, paper=paper, message="Paper uploaded successfully")
@@ -118,9 +171,20 @@ async def list_papers() -> List[PaperMetadata]:
     if not settings.storage.workspace_path.exists():
         return []
 
+    from datetime import datetime, timezone
+
     papers = []
     for paper_name in settings.storage.list_papers():
         paper_path = settings.storage.get_paper_path(paper_name)
+        paper_dir = settings.storage.get_paper_dir(paper_name)
+
+        # Check if thumbnail exists
+        thumbnail_path = paper_dir / "thumbnail.jpg"
+        thumbnail_url = f"/api/papers/{paper_name}/thumbnail.jpg" if thumbnail_path.exists() else None
+
+        # Get file modification time as upload date
+        mtime = paper_path.stat().st_mtime
+        upload_date = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
 
         try:
             import fitz
@@ -138,6 +202,8 @@ async def list_papers() -> List[PaperMetadata]:
                     author=metadata.get("author"),
                     page_count=page_count,
                     file_size=paper_path.stat().st_size,
+                    thumbnail_url=thumbnail_url,
+                    upload_date=upload_date,
                 )
             )
         except Exception:
@@ -147,6 +213,8 @@ async def list_papers() -> List[PaperMetadata]:
                     name=paper_name,
                     page_count=0,
                     file_size=paper_path.stat().st_size,
+                    thumbnail_url=thumbnail_url,
+                    upload_date=upload_date,
                 )
             )
 
@@ -161,11 +229,22 @@ async def search_papers(q: str = Query(..., description="Search query")) -> List
     if not settings.storage.workspace_path.exists():
         return []
 
+    from datetime import datetime, timezone
+
     query = q.lower()
     papers = []
 
     for paper_name in settings.storage.list_papers():
         paper_path = settings.storage.get_paper_path(paper_name)
+        paper_dir = settings.storage.get_paper_dir(paper_name)
+
+        # Check if thumbnail exists
+        thumbnail_path = paper_dir / "thumbnail.jpg"
+        thumbnail_url = f"/api/papers/{paper_name}/thumbnail.jpg" if thumbnail_path.exists() else None
+
+        # Get file modification time as upload date
+        mtime = paper_path.stat().st_mtime
+        upload_date = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
 
         try:
             import fitz
@@ -188,6 +267,8 @@ async def search_papers(q: str = Query(..., description="Search query")) -> List
                         author=metadata.get("author"),
                         page_count=page_count,
                         file_size=paper_path.stat().st_size,
+                        thumbnail_url=thumbnail_url,
+                        upload_date=upload_date,
                     )
                 )
         except Exception:
@@ -199,6 +280,8 @@ async def search_papers(q: str = Query(..., description="Search query")) -> List
                         name=paper_name,
                         page_count=0,
                         file_size=paper_path.stat().st_size,
+                        thumbnail_url=thumbnail_url,
+                        upload_date=upload_date,
                     )
                 )
 
@@ -247,12 +330,22 @@ async def get_paper(paper_id: str) -> PaperResponse:
     """Get a specific paper by ID (folder name)."""
     settings = get_settings()
     paper_path = settings.storage.get_paper_path(paper_id)
+    paper_dir = settings.storage.get_paper_dir(paper_id)
 
     if not paper_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Paper not found",
         )
+
+    # Check if thumbnail exists
+    thumbnail_path = paper_dir / "thumbnail.jpg"
+    thumbnail_url = f"/api/papers/{paper_id}/thumbnail.jpg" if thumbnail_path.exists() else None
+
+    # Get file modification time as upload date
+    from datetime import datetime, timezone
+    mtime = paper_path.stat().st_mtime
+    upload_date = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
 
     try:
         import fitz
@@ -269,6 +362,8 @@ async def get_paper(paper_id: str) -> PaperResponse:
             author=metadata.get("author"),
             page_count=page_count,
             file_size=paper_path.stat().st_size,
+            thumbnail_url=thumbnail_url,
+            upload_date=upload_date,
         )
     except Exception as e:
         raise HTTPException(
@@ -294,6 +389,24 @@ async def get_paper_content(paper_id: str):
     from fastapi.responses import FileResponse
 
     return FileResponse(paper_path, media_type="application/pdf")
+
+
+@router.get("/{paper_id}/thumbnail.jpg")
+async def get_paper_thumbnail(paper_id: str):
+    """Get the paper thumbnail."""
+    settings = get_settings()
+    paper_dir = settings.storage.get_paper_dir(paper_id)
+    thumbnail_path = paper_dir / "thumbnail.jpg"
+
+    if not thumbnail_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Thumbnail not found",
+        )
+
+    from fastapi.responses import FileResponse
+
+    return FileResponse(thumbnail_path, media_type="image/jpeg")
 
 
 @router.delete("/{paper_id}", response_model=PaperResponse)

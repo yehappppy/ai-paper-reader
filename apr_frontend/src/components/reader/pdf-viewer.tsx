@@ -269,9 +269,13 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
                       <button
                         key={pageNum}
                         onClick={() => scrollToPage(pageNum)}
+                        aria-label={`Page ${pageNum}`}
+                        aria-current={currentPage === pageNum ? "true" : undefined}
                         className={cn(
-                          "w-full aspect-[3/4] rounded-lg border-2 transition-all relative overflow-hidden bg-white",
-                          currentPage === pageNum ? "border-indigo-500 ring-2 ring-indigo-200" : "border-transparent hover:border-muted-foreground/30"
+                          "w-full aspect-[3/4] rounded-lg border-2 transition-all relative overflow-hidden bg-white select-none",
+                          currentPage === pageNum
+                            ? "border-indigo-500 ring-2 ring-indigo-200 bg-indigo-50 dark:bg-indigo-950/30"
+                            : "border-transparent hover:border-muted-foreground/30"
                         )}
                       >
                         <div className="w-full h-full flex items-center justify-center overflow-hidden">
@@ -283,11 +287,15 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
                             className="max-w-full max-h-full"
                           />
                         </div>
-                        {currentPage === pageNum && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-indigo-500 text-white text-xs py-0.5">
-                            {pageNum}
-                          </div>
-                        )}
+                        {/* Page number label - always visible */}
+                        <div className={cn(
+                          "absolute bottom-0 left-0 right-0 text-xs py-0.5 flex items-center justify-center transition-colors",
+                          currentPage === pageNum
+                            ? "bg-indigo-500 text-white"
+                            : "bg-black/60 text-white"
+                        )}>
+                          {pageNum}
+                        </div>
                       </button>
                     ))}
                   </Document>
@@ -480,20 +488,6 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
                 ))}
               </Document>
             </motion.div>
-          </div>
-
-          {/* Page Slider */}
-          <div className="flex items-center gap-3 px-4 py-2 border-t bg-background/80 backdrop-blur-sm shrink-0">
-            <span className="text-xs text-muted-foreground">1</span>
-            <input
-              type="range"
-              min={1}
-              max={numPages}
-              value={currentPage}
-              onChange={(e) => scrollToPage(parseInt(e.target.value))}
-              className="flex-1 h-1 bg-muted rounded-lg appearance-none cursor-pointer accent-indigo-600"
-            />
-            <span className="text-xs text-muted-foreground">{numPages}</span>
           </div>
         </div>
       </div>

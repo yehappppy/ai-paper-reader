@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -24,6 +24,107 @@ import type { Paper } from "@/lib/types";
 import { formatDate, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+interface PaperCardProps {
+  paper: Paper;
+  index: number;
+}
+
+function PaperCard({ paper, index }: PaperCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Full URL for thumbnail - prepend API base URL if relative path
+  const thumbnailSrc = paper.thumbnail_url
+    ? paper.thumbnail_url.startsWith("http")
+      ? paper.thumbnail_url
+      : `${API_URL}${paper.thumbnail_url}`
+    : null;
+
+  const hasThumbnail = thumbnailSrc && !imageError;
+
+  // Reset error state when thumbnail_url changes
+  useEffect(() => {
+    setImageError(false);
+    setImageLoading(false);
+  }, [paper.thumbnail_url]);
+
+  const title = paper.title || paper.name || "Untitled";
+  const firstLetter = title.charAt(0).toUpperCase();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+    >
+      <Link href={`/reader/${paper.id}`}>
+        <Card
+          className="group aspect-[3/4] flex flex-col overflow-hidden cursor-pointer hover:shadow-apple-lg transition-all duration-300 hover:-translate-y-1 border-border/50"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {/* Thumbnail - fixed aspect ratio container */}
+          <div className="relative flex-1 min-h-[140px] bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 flex items-center justify-center overflow-hidden">
+            {imageLoading && (
+              <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-muted-foreground/20" />
+              </div>
+            )}
+
+            {hasThumbnail ? (
+              <img
+                src={thumbnailSrc}
+                alt={title}
+                className="w-full h-full object-cover"
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+                onLoadStart={() => setImageLoading(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50">
+                <div className="w-20 h-20 rounded-full bg-indigo-200 dark:bg-indigo-800 flex items-center justify-center text-4xl font-bold text-indigo-600 dark:text-indigo-300">
+                  {firstLetter}
+                </div>
+              </div>
+            )}
+
+            {/* Hover Overlay - visual feedback on hover, click navigates to reader */}
+            <div
+              className={cn(
+                "absolute inset-0 z-10 bg-black/30 transition-opacity",
+                isHovered ? "opacity-100" : "opacity-0"
+              )}
+            />
+          </div>
+
+          {/* Info */}
+          <CardContent className="p-4 space-y-2">
+            <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+              {title}
+            </h3>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(paper.upload_date || "")}
+              </span>
+              <span className="flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" />
+                {paper.notes_count ?? 0}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    </motion.div>
+  );
+}
+
 interface DashboardContentProps {
   initialPapers: Paper[];
   error: string | null;
@@ -31,10 +132,9 @@ interface DashboardContentProps {
 
 export function DashboardContent({ initialPapers, error }: DashboardContentProps) {
   const router = useRouter();
-  const { papers, setPapers, addPaper, removePaper } = usePapersStore();
+  const { papers, setPapers, addPaper } = usePapersStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const displayPapers = (papers?.length > 0 ? papers : initialPapers) || [];
 
@@ -57,22 +157,6 @@ export function DashboardContent({ initialPapers, error }: DashboardContentProps
       console.error("Upload error:", error);
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  const handleDelete = async (e: React.MouseEvent, paperId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setIsDeleting(paperId);
-    try {
-      await papersApi.delete(paperId);
-      removePaper(paperId);
-      toast.success("Paper deleted");
-    } catch (error) {
-      toast.error("Failed to delete paper");
-    } finally {
-      setIsDeleting(null);
     }
   };
 
@@ -135,66 +219,11 @@ export function DashboardContent({ initialPapers, error }: DashboardContentProps
       {/* Papers Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredPapers.map((paper, index) => (
-          <motion.div
+          <PaperCard
             key={paper.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.3 }}
-          >
-            <Link href={`/reader/${paper.id}`}>
-              <Card className="group aspect-[3/4] flex flex-col overflow-hidden cursor-pointer hover:shadow-apple-lg transition-all duration-300 hover:-translate-y-1 border-border/50">
-                {/* Thumbnail */}
-                <div className="relative flex-1 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 flex items-center justify-center overflow-hidden">
-                  {paper.thumbnail_url ? (
-                    <img
-                      src={paper.thumbnail_url}
-                      alt={paper.title || paper.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <FileText className="w-16 h-16 text-indigo-200 dark:text-indigo-800" />
-                  )}
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button size="sm" variant="secondary" className="rounded-full">
-                      Open
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="rounded-full"
-                      onClick={(e) => handleDelete(e, paper.id)}
-                      disabled={isDeleting === paper.id}
-                    >
-                      {isDeleting === paper.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <X className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <CardContent className="p-4 space-y-2">
-                  <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                    {paper.title || paper.name}
-                  </h3>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatDate(paper.upload_date || "")}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3" />
-                      {paper.notes_count ?? 0}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </motion.div>
+            paper={paper}
+            index={index}
+          />
         ))}
 
         {/* Upload Card */}
