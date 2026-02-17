@@ -10,7 +10,7 @@ import {
   Sparkles,
   File,
   Clock,
-  MessageSquare,
+  StickyNote,
   Search,
   X,
   Loader2,
@@ -114,7 +114,7 @@ function PaperCard({ paper, index }: PaperCardProps) {
                 {formatDate(paper.upload_date || "")}
               </span>
               <span className="flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" />
+                <StickyNote className="w-3 h-3" />
                 {paper.notes_count ?? 0}
               </span>
             </div>

@@ -67,6 +67,7 @@ class PaperMetadata(BaseModel):
     file_size: int = 0
     thumbnail_url: str | None = None
     upload_date: str | None = None
+    notes_count: int = 0
 
 
 class PaperResponse(BaseModel):
@@ -182,6 +183,11 @@ async def list_papers() -> List[PaperMetadata]:
         thumbnail_path = paper_dir / "thumbnail.jpg"
         thumbnail_url = f"/api/papers/{paper_name}/thumbnail.jpg" if thumbnail_path.exists() else None
 
+        # Check if note exists
+        # Count all markdown files in paper directory
+        md_files = list(paper_dir.glob("*.md"))
+        notes_count = len(md_files)
+
         # Get file modification time as upload date
         mtime = paper_path.stat().st_mtime
         upload_date = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
@@ -204,6 +210,7 @@ async def list_papers() -> List[PaperMetadata]:
                     file_size=paper_path.stat().st_size,
                     thumbnail_url=thumbnail_url,
                     upload_date=upload_date,
+                    notes_count=notes_count,
                 )
             )
         except Exception:
@@ -211,6 +218,7 @@ async def list_papers() -> List[PaperMetadata]:
                 PaperMetadata(
                     id=paper_name,
                     name=paper_name,
+                    notes_count=notes_count,
                     page_count=0,
                     file_size=paper_path.stat().st_size,
                     thumbnail_url=thumbnail_url,
@@ -242,6 +250,11 @@ async def search_papers(q: str = Query(..., description="Search query")) -> List
         thumbnail_path = paper_dir / "thumbnail.jpg"
         thumbnail_url = f"/api/papers/{paper_name}/thumbnail.jpg" if thumbnail_path.exists() else None
 
+        # Check if note exists
+        # Count all markdown files in paper directory
+        md_files = list(paper_dir.glob("*.md"))
+        notes_count = len(md_files)
+
         # Get file modification time as upload date
         mtime = paper_path.stat().st_mtime
         upload_date = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
@@ -269,6 +282,7 @@ async def search_papers(q: str = Query(..., description="Search query")) -> List
                         file_size=paper_path.stat().st_size,
                         thumbnail_url=thumbnail_url,
                         upload_date=upload_date,
+                        notes_count=notes_count,
                     )
                 )
         except Exception:
@@ -282,6 +296,7 @@ async def search_papers(q: str = Query(..., description="Search query")) -> List
                         file_size=paper_path.stat().st_size,
                         thumbnail_url=thumbnail_url,
                         upload_date=upload_date,
+                        notes_count=notes_count,
                     )
                 )
 
@@ -342,6 +357,10 @@ async def get_paper(paper_id: str) -> PaperResponse:
     thumbnail_path = paper_dir / "thumbnail.jpg"
     thumbnail_url = f"/api/papers/{paper_id}/thumbnail.jpg" if thumbnail_path.exists() else None
 
+    # Count all markdown files in paper directory
+    md_files = list(paper_dir.glob("*.md"))
+    notes_count = len(md_files)
+
     # Get file modification time as upload date
     from datetime import datetime, timezone
     mtime = paper_path.stat().st_mtime
@@ -364,6 +383,7 @@ async def get_paper(paper_id: str) -> PaperResponse:
             file_size=paper_path.stat().st_size,
             thumbnail_url=thumbnail_url,
             upload_date=upload_date,
+            notes_count=notes_count,
         )
     except Exception as e:
         raise HTTPException(
