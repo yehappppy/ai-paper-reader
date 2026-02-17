@@ -116,9 +116,7 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
   const rotate = () => setRotation((prev) => (prev + 90) % 360);
 
   // Handle text selection for highlighting
-  const handleTextSelection = useCallback(() => {
-    if (!isHighlightMode) return;
-
+  const createHighlight = useCallback(() => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
 
@@ -127,20 +125,53 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
 
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    const containerRect = containerRef.current?.getBoundingClientRect();
 
-    if (!containerRect) return;
+    // Find the page element that contains the selection by traversing up the DOM
+    let node = selection.anchorNode;
+    let pageElement: HTMLElement | null = null;
+    let pageNum = currentPage;
 
+    while (node) {
+      if (node instanceof Element) {
+        // Check if this is a page container (has ref)
+        const idx = pageRefs.current.indexOf(node as HTMLDivElement);
+        if (idx !== -1) {
+          pageElement = node as HTMLDivElement;
+          pageNum = idx + 1;
+          break;
+        }
+        // Also check parent elements
+        const parentWithRef = node.closest('[data-page-index]');
+        if (parentWithRef) {
+          pageNum = parseInt(parentWithRef.getAttribute('data-page-index') || '1');
+          pageElement = pageRefs.current[pageNum - 1] || null;
+          break;
+        }
+      }
+      node = node.parentNode;
+    }
+
+    // Fallback: use currentPage if we couldn't find the page from selection
+    if (!pageElement) {
+      pageElement = pageRefs.current[currentPage - 1];
+    }
+
+    if (!pageElement) return;
+
+    const pageRect = pageElement.getBoundingClientRect();
+
+    // Calculate position relative to the page element (not the container)
+    // This ensures highlights are positioned correctly regardless of scroll
     const position = {
-      x: rect.left - containerRect.left + containerRef.current.scrollLeft,
-      y: rect.top - containerRect.top + containerRef.current.scrollTop,
-      width: rect.width,
-      height: rect.height,
+      x: (rect.left - pageRect.left) / scale,
+      y: (rect.top - pageRect.top) / scale,
+      width: rect.width / scale,
+      height: rect.height / scale,
     };
 
     const newHighlight: Highlight = {
       id: `highlight-${Date.now()}`,
-      page: currentPage,
+      page: pageNum,
       text: text.slice(0, 100),
       color: "#fef08a",
       position,
@@ -151,7 +182,13 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
     setRedoHistory([]);
     setHighlights((prev) => [...prev, newHighlight]);
     selection.removeAllRanges();
-  }, [isHighlightMode, currentPage, highlights]);
+  }, [currentPage, highlights, scale]);
+
+  // Handle text selection for highlighting (only works in highlight mode)
+  const handleTextSelection = useCallback(() => {
+    if (!isHighlightMode) return;
+    createHighlight();
+  }, [isHighlightMode, createHighlight]);
 
   const undoHighlight = useCallback(() => {
     if (highlightHistory.length === 0) return;
@@ -356,7 +393,18 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
                   <Button
                     variant={isHighlightMode ? "default" : "ghost"}
                     size="icon"
-                    onClick={() => setIsHighlightMode(!isHighlightMode)}
+                    onClick={() => {
+                      const selection = window.getSelection();
+                      const hasSelection = selection && !selection.isCollapsed && selection.toString().trim().length >= 2;
+
+                      if (hasSelection) {
+                        // If text is selected, highlight it immediately
+                        createHighlight();
+                      } else {
+                        // Toggle highlight mode
+                        setIsHighlightMode(!isHighlightMode);
+                      }
+                    }}
                     className={cn("h-8 w-8", isHighlightMode && "bg-yellow-500 hover:bg-yellow-600")}
                   >
                     <Highlighter className="w-4 h-4" />
@@ -384,13 +432,6 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
             </div>
           </div>
 
-          {/* Highlight Mode Banner */}
-          {isHighlightMode && (
-            <div className="px-4 py-1.5 bg-yellow-50 dark:bg-yellow-950/30 border-b text-xs text-yellow-800 dark:text-yellow-200 flex items-center justify-between">
-              <span>Highlight Mode - Select text to highlight</span>
-              <span>{highlights.length} highlight{highlights.length !== 1 ? "s" : ""}</span>
-            </div>
-          )}
 
           {/* PDF Content */}
           <div
@@ -409,6 +450,7 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
                 {Array.from(new Array(numPages), (_, index) => (
                   <div
                     key={`page-${index + 1}`}
+                    data-page-index={index + 1}
                     ref={(el) => { pageRefs.current[index] = el; }}
                     className="flex justify-center relative"
                   >
@@ -427,10 +469,10 @@ export function PdfViewer({ paperId }: PdfViewerProps) {
                         key={highlight.id}
                         className="absolute pointer-events-none rounded-sm bg-yellow-400/40"
                         style={{
-                          left: highlight.position.x / scale,
-                          top: highlight.position.y / scale,
-                          width: highlight.position.width / scale,
-                          height: highlight.position.height / scale,
+                          left: highlight.position.x * scale,
+                          top: highlight.position.y * scale,
+                          width: highlight.position.width * scale,
+                          height: highlight.position.height * scale,
                         }}
                       />
                     ))}
