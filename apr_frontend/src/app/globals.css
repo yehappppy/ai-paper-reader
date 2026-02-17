@@ -125,3 +125,65 @@ html {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
   border-radius: 8px !important;
 }
+
+/* Notes Editor - Prevent horizontal overflow */
+.notes-preview-content {
+  overflow-x: hidden !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* KaTeX overflow fixes */
+.notes-preview-content .katex {
+  font-size: 1em !important;
+  text-rendering: auto;
+}
+
+.notes-preview-content .katex-display {
+  display: block !important;
+  margin: 1em 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
+}
+
+.notes-preview-content .katex-display > .katex {
+  display: block !important;
+  text-align: center !important;
+}
+
+.notes-preview-content .katex-html {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+/* Ensure all markdown elements respect container */
+.notes-preview-content * {
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+.notes-preview-content pre {
+  overflow-x: auto !important;
+  max-width: 100% !important;
+}
+
+.notes-preview-content code {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+}
+
+.notes-preview-content a {
+  word-break: break-all !important;
+}
+
+/* Override Radix ScrollArea viewport to prevent horizontal scroll */
+[data-radix-scroll-area-viewport] {
+  overflow-x: hidden !important;
+}
+
+/* Ensure Panel doesn't cause overflow */
+[data-panel-group] {
+  max-width: 100% !important;
+}

@@ -46,7 +46,7 @@ export function ReaderContent({ paper, initialNotes }: ReaderContentProps) {
         </Button>
       </div>
 
-      <div className="h-[calc(100vh-3.5rem)] lg:h-full">
+      <div className="h-[calc(100vh-3.5rem)] lg:h-full overflow-hidden">
         <PanelGroup direction="horizontal" className="h-full">
           {/* PDF Viewer - Left Panel */}
           <Panel defaultSize={60} minSize={30}>
@@ -59,7 +59,7 @@ export function ReaderContent({ paper, initialNotes }: ReaderContentProps) {
 
           {/* Notes Editor - Right Panel */}
           <Panel defaultSize={40} minSize={20}>
-            <PanelGroup direction="vertical">
+            <PanelGroup direction="vertical" className="overflow-hidden">
               <Panel defaultSize={60} minSize={30}>
                 <div className="h-full overflow-hidden border-l">
                   <NotesEditor paperId={paper.id} />

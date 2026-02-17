@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import Editor from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { Save, Eye, Edit3, Loader2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -98,8 +101,8 @@ export function NotesEditor({ paperId }: NotesEditorProps) {
 
   return (
     <div className="h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      {/* Header - sticky */}
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-background shrink-0">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-medium">Notes</h2>
           {isSaving && (
@@ -137,8 +140,8 @@ export function NotesEditor({ paperId }: NotesEditorProps) {
       </div>
 
       {/* Editor/Preview Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "preview")} className="flex-1 flex flex-col">
-        <TabsList className="mx-4 mt-2 w-auto">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "preview")} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="mx-4 mt-2 w-auto shrink-0">
           <TabsTrigger value="edit" className="gap-1">
             <Edit3 className="w-3 h-3" />
             Edit
@@ -175,9 +178,39 @@ export function NotesEditor({ paperId }: NotesEditorProps) {
         </TabsContent>
 
         <TabsContent value="preview" className="flex-1 m-0 overflow-hidden">
-          <ScrollArea className="h-full p-4">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || "*No notes yet*"}</ReactMarkdown>
+          <ScrollArea className="h-full w-full overflow-hidden">
+            <div
+              className="p-4 w-full box-border"
+              style={{
+                overflowWrap: "break-word",
+                wordBreak: "break-word",
+                maxWidth: "100%",
+                overflowX: "hidden",
+              }}
+            >
+              <div className="notes-preview-content prose prose-sm dark:prose-invert max-w-none w-full
+                prose-p:leading-relaxed prose-p:mb-3
+                prose-li:leading-relaxed
+                prose-h1:text-xl prose-h1:font-semibold prose-h1:mb-2
+                prose-h2:text-lg prose-h2:font-semibold prose-h2:mb-2
+                prose-h3:text-base prose-h3:font-semibold prose-h3:mb-1
+                prose-a:text-blue-500 prose-a:break-all
+                prose-code:text-sm prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                prose-pre:bg-muted prose-pre:text-sm prose-pre:max-w-full prose-pre:overflow-x-auto
+                prose-blockquote:border-l-4 prose-blockquote:border-muted-foreground prose-blockquote:pl-3 prose-blockquote:italic
+                prose-th:border prose-th:p-2 prose-td:p-2
+                prose-img:max-w-full prose-img:h-auto
+                katex-display:block katex-display:overflow-x-auto
+                [&_span.katex]:text-sm
+                [&]:max-w-full
+              ">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {content || "*No notes yet*"}
+                </ReactMarkdown>
+              </div>
             </div>
           </ScrollArea>
         </TabsContent>
